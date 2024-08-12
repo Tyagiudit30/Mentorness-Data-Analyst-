@@ -1,0 +1,182 @@
+-- To avoid any errors, check missing value / null value 
+-- Q1. Write a code to check NULL values
+SELECT
+    SUM(CASE WHEN Province IS NULL THEN 1 ELSE 0 END) AS Null_Province,
+    SUM(CASE WHEN [Country/Region] IS NULL THEN 1 ELSE 0 END) AS Null_Country_Region,
+    SUM(CASE WHEN Latitude IS NULL THEN 1 ELSE 0 END) AS Null_Latitude,
+    SUM(CASE WHEN Longitude IS NULL THEN 1 ELSE 0 END) AS Null_Longitude,
+    SUM(CASE WHEN Date IS NULL THEN 1 ELSE 0 END) AS Null_Date,
+    SUM(CASE WHEN Confirmed IS NULL THEN 1 ELSE 0 END) AS Null_Confirmed,
+    SUM(CASE WHEN Deaths IS NULL THEN 1 ELSE 0 END) AS Null_Deaths,
+    SUM(CASE WHEN Recovered IS NULL THEN 1 ELSE 0 END) AS Null_Recovered
+FROM
+    Corona_Virus_Dataset;
+
+
+--Q2. If NULL values are present, update them with zeros for all columns. 
+UPDATE Corona_Virus_Dataset
+SET 
+    Province = COALESCE(Province, ''),
+    [Country/Region] = COALESCE([Country/Region], ''),
+    Latitude = COALESCE(Latitude, 0),
+    Longitude = COALESCE(Longitude, 0),
+    Date = COALESCE(Date, ''),
+    Confirmed = COALESCE(Confirmed, 0),
+    Deaths = COALESCE(Deaths, 0),
+    Recovered = COALESCE(Recovered, 0);
+
+-- Q3. check total number of rows
+SELECT COUNT(*) AS Total_Rows
+FROM Corona_Virus_Dataset;
+
+-- Q4. Check what is start_date and end_date
+SELECT 
+    MIN(Date) AS start_date,
+    MAX(Date) AS end_date
+FROM 
+    Corona_Virus_Dataset;
+
+-- Q5. Number of month present in dataset
+SELECT COUNT(DISTINCT SUBSTR(Date, 1, 7)) AS num_months
+FROM Corona_Virus_Dataset;
+
+-- Q6. Find monthly average for confirmed, deaths, recovered
+SELECT 
+    SUBSTR(Date, 1, 7) AS month,
+    AVG(Confirmed) AS avg_confirmed,
+    AVG(Deaths) AS avg_deaths,
+    AVG(Recovered) AS avg_recovered
+FROM 
+    Corona_Virus_Dataset
+GROUP BY 
+    SUBSTR(Date, 1, 7)
+ORDER BY 
+    month;
+
+
+-- Q7. Find most frequent value for confirmed, deaths, recovered each month 
+WITH MonthlyCounts AS (
+    SELECT 
+        SUBSTR(Date, 1, 7) AS month,
+        Confirmed,
+        Deaths,
+        Recovered,
+        ROW_NUMBER() OVER (PARTITION BY SUBSTR(Date, 1, 7), Confirmed ORDER BY COUNT(*) DESC) AS confirmed_rank,
+        ROW_NUMBER() OVER (PARTITION BY SUBSTR(Date, 1, 7), Deaths ORDER BY COUNT(*) DESC) AS deaths_rank,
+        ROW_NUMBER() OVER (PARTITION BY SUBSTR(Date, 1, 7), Recovered ORDER BY COUNT(*) DESC) AS recovered_rank
+    FROM 
+        Corona_Virus_Dataset
+    GROUP BY 
+        SUBSTR(Date, 1, 7), Confirmed, Deaths, Recovered
+)
+SELECT 
+    month,
+    MAX(CASE WHEN confirmed_rank = 1 THEN Confirmed END) AS most_frequent_confirmed,
+    MAX(CASE WHEN deaths_rank = 1 THEN Deaths END) AS most_frequent_deaths,
+    MAX(CASE WHEN recovered_rank = 1 THEN Recovered END) AS most_frequent_recovered
+FROM 
+    MonthlyCounts
+GROUP BY 
+    month
+ORDER BY 
+    month;
+
+-- Q8. Find minimum values for confirmed, deaths, recovered per year
+SELECT 
+    strftime('%Y', Date) AS Year,
+    MIN(Confirmed) AS MinConfirmed,
+    MIN(Deaths) AS MinDeaths,
+    MIN(Recovered) AS MinRecovered
+FROM 
+    Corona_Virus_Dataset
+GROUP BY 
+    strftime('%Y', Date);
+
+-- Q9. Find maximum values of confirmed, deaths, recovered per year
+SELECT 
+    strftime('%Y', Date) AS Year,
+    MAX(Confirmed) AS MaxConfirmed,
+    MAX(Deaths) AS MaxDeaths,
+    MAX(Recovered) AS MaxRecovered
+FROM 
+    Corona_Virus_Dataset
+GROUP BY 
+    strftime('%Y', Date);
+
+-- Q10. The total number of case of confirmed, deaths, recovered each month
+SELECT 
+    strftime('%Y-%m', Date) AS Month,
+    SUM(Confirmed) AS TotalConfirmed,
+    SUM(Deaths) AS TotalDeaths,
+    SUM(Recovered) AS TotalRecovered
+FROM 
+    Corona_Virus_Dataset
+GROUP BY 
+    strftime('%Y-%m', Date);
+
+-- Q11. Check how corona virus spread out with respect to confirmed case
+--      (Eg.: total confirmed cases, their average, variance & STDEV )
+SELECT 
+    SUM(Confirmed) AS TotalConfirmed,
+    AVG(Confirmed) AS AvgConfirmed,
+    VARIANCE(Confirmed) AS VarConfirmed,
+    STDEV(Confirmed) AS StdConfirmed
+FROM 
+    Corona_Virus_Dataset;
+
+
+-- Q12. Check how corona virus spread out with respect to death case per month
+--      (Eg.: total confirmed cases, their average, variance & STDEV )
+SELECT 
+    SUM(Deaths) AS TotalDeaths,
+    AVG(Deaths) AS AvgDeaths,
+    VARIANCE(Deaths) AS VarDeaths,
+    STDEV(Deaths) AS StdDeaths
+FROM 
+    Corona_Virus_Dataset;
+
+
+-- Q13. Check how corona virus spread out with respect to recovered case
+--      (Eg.: total confirmed cases, their average, variance & STDEV )
+SELECT 
+    SUM(Recovered) AS TotalRecovered,
+    AVG(Recovered) AS AvgRecovered,
+    VARIANCE(Recovered) AS VarRecovered,
+    STDEV(Recovered) AS StdRecovered
+FROM 
+    Corona_Virus_Dataset;
+
+-- Q14. Find Country having highest number of the Confirmed case
+SELECT 
+    "Country/Region",
+    SUM(Confirmed) AS TotalConfirmed
+FROM 
+    Corona_Virus_Dataset
+GROUP BY 
+    "Country/Region"
+ORDER BY 
+    TotalConfirmed DESC
+LIMIT 1;
+-- Q15. Find Country having lowest number of the death case
+SELECT 
+    "Country/Region",
+    SUM(Deaths) AS TotalDeaths
+FROM 
+    Corona_Virus_Dataset
+GROUP BY 
+    "Country/Region"
+ORDER BY 
+    TotalDeaths ASC
+LIMIT 1;
+
+-- Q16. Find top 5 countries having highest recovered case
+SELECT 
+    "Country/Region",
+    SUM(Recovered) AS TotalRecovered
+FROM 
+    Corona_Virus_Dataset
+GROUP BY 
+    "Country/Region"
+ORDER BY 
+    TotalRecovered DESC
+LIMIT 5;
